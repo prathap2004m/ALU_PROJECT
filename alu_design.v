@@ -1,4 +1,4 @@
-module alu_design#(
+module alu#(
 parameter N=8)(
 input wire CLK,
 input wire RST,
@@ -26,23 +26,25 @@ reg CIN_TEMP;
 reg [3:0]CMD_TEMP;
 reg MODE_TEMP;
 reg [1:0]INP_VALID_TEMP;
+reg [N-1:0] MUL_OPA, MUL_OPB;
+reg BUSY;
 
 
 always @(posedge CLK or posedge RST)
 begin
     if (RST)
-        count <= 2'b00;
+        count<=2'b00;
     else
     begin
-        if (CMD_TEMP == 4'd9 || CMD_TEMP == 4'd10)
+        if (CMD_TEMP==4'd9||CMD_TEMP==4'd10)
         begin
-            if (count == 2'd1)
-                count <= 2'b00;
+            if (count==2'd1)
+                count<=2'b00;
             else
-                count <= count + 1;
+                count<=count+1;
         end
         else
-            count <= 2'b00;
+            count<=2'b00;
     end
 end
 
@@ -50,31 +52,75 @@ always @(posedge CLK or posedge RST)
 begin
     if(RST)
     begin
-        OPA_TEMP <= 0;
-        OPB_TEMP <= 0;
-        CIN_TEMP <= 0;
-        CMD_TEMP <= 0;
-        MODE_TEMP <= 0;
-        INP_VALID_TEMP <= 0;
+        OPA_TEMP<=0;
+        OPB_TEMP<=0;
+        CIN_TEMP<=0;
+        CMD_TEMP<=0;
+        MODE_TEMP<=0;
+        INP_VALID_TEMP<=0;
+        MUL_OPA<=0;
+        MUL_OPB<=0;
+        BUSY<=0;
+        count<=0;
     end
     else if(CE)
     begin
-        OPA_TEMP <= OPA;
-        OPB_TEMP <= OPB;
-        CIN_TEMP <= CIN;
-        CMD_TEMP <= CMD;
-        MODE_TEMP <= MODE;
-        INP_VALID_TEMP <= INP_VALID;
+        if(!BUSY && MODE &&(CMD==4'd9 || CMD==4'd10))
+        begin
+            BUSY<=1'b1;
+            count<=0;
+            MUL_OPA<=OPA;
+            MUL_OPB<=OPB;
+            CMD_TEMP<=CMD;
+            MODE_TEMP<=MODE;
+            INP_VALID_TEMP<=INP_VALID;
+        end
+        else if(BUSY)
+        begin
+            if(!(MODE && (CMD==4'd9 || CMD==4'd10)))
+            begin
+                BUSY<=1'b0;
+                count<=0;
+                OPA_TEMP<=OPA;
+                OPB_TEMP<=OPB;
+                CIN_TEMP<=CIN;
+                CMD_TEMP<=CMD;
+                MODE_TEMP<=MODE;
+                INP_VALID_TEMP<=INP_VALID;
+            end
+            else
+            begin
+                count<=count+1;
+                if(count == 2'd0)
+                begin
+                    BUSY<=1'b0;
+                    OPA_TEMP<=OPA;
+                    OPB_TEMP<=OPB;
+                    CIN_TEMP<=CIN;
+                    CMD_TEMP<=CMD;
+                    MODE_TEMP<=MODE;
+                    INP_VALID_TEMP<=INP_VALID;
+                end
+            end
+        end
+        else
+        begin
+            OPA_TEMP<=OPA;
+            OPB_TEMP<=OPB;
+            CIN_TEMP<=CIN;
+            CMD_TEMP<=CMD;
+            MODE_TEMP<=MODE;
+            INP_VALID_TEMP<=INP_VALID;
+        end
     end
 end
-
 always @(posedge CLK or posedge RST)
 begin
     if(RST)
     begin
-        RES <= {(2*N){1'b0}};
-        ERR <= 1'b0;
-        OFLOW <= 1'b0;
+        RES<= {(2*N){1'b0}};
+        ERR<= 1'b0;
+        OFLOW<= 1'b0;
         COUT <= 1'b0;
         G <= 1'b0;
         L <= 1'b0;
@@ -108,7 +154,7 @@ begin
                 else
                     ERR <= 1'b1;
             end
-
+            
             4'd1:
             begin
                 if(INP_VALID_TEMP==2'b11)
@@ -214,24 +260,24 @@ begin
 
             4'd9:
             begin
-                if(INP_VALID_TEMP==2'b11)
-                begin
-                    RES <= (count==2'b01)?((OPA_TEMP+1)*(OPB_TEMP+1)):RES;
-                    {ERR,COUT,OFLOW,G,L,E} <= 6'b000000;
-                end
-                else
-                    ERR <= 1'b1;
+            if(INP_VALID_TEMP==2'b11)
+            begin
+                RES <= (count==2'd1) ?((MUL_OPA+1)*(MUL_OPB+1)) :RES;
+                {ERR,COUT,OFLOW,G,L,E} <= 6'b000000;
             end
+            else
+                ERR <= 1'b1;
+            end 
 
             4'd10:
             begin
-                if(INP_VALID_TEMP==2'b11)
-                begin
-                    RES <= (count==2'b10)?(((OPA_TEMP<<1)+1)*(OPB_TEMP+1)):{(2*N){1'bx}};
-                    {ERR,COUT,OFLOW,G,L,E} <= 6'b000000;
-                end
-                else
-                    ERR <= 1'b1;
+            if(INP_VALID_TEMP==2'b11)
+            begin
+                RES <= (count==2'd1) ? (((MUL_OPA<<1)+1)*(MUL_OPB+1)):RES;
+                {ERR,COUT,OFLOW,G,L,E} <= 6'b000000;
+            end
+            else
+                ERR <= 1'b1;
             end
             
             4'd11:
@@ -272,7 +318,6 @@ begin
         else
         begin
         case(CMD_TEMP)
-    
         4'd0:
         begin
             if(INP_VALID_TEMP==2'b11)
@@ -432,7 +477,6 @@ begin
             ERR <= 1'b1;
         end
     
-    
         4'd13:
         begin
             if(INP_VALID_TEMP==2'b11)
@@ -465,12 +509,8 @@ begin
             RES[N-1:0] <= {(2*N){1'b0}};
             {ERR,G,L,E,COUT,OFLOW} <= 6'b000000;
         end
-        
-        
-    
         endcase
     end
     end
 end
-
 endmodule
