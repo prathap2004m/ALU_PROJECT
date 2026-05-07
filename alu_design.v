@@ -159,7 +159,7 @@ begin
             begin
                 if(INP_VALID_TEMP==2'b11)
                 begin
-                    RES<= OPA_TEMP - OPB_TEMP;
+                    RES<={{N{1'b0}},OPA_TEMP - OPB_TEMP};
                     COUT<= (OPA_TEMP >= OPB_TEMP);
                     OFLOW<= !(OPA_TEMP >= OPB_TEMP);
                     {ERR,G,L,E} <= 4'b0000;
@@ -185,7 +185,7 @@ begin
             begin
                 if(INP_VALID_TEMP==2'b11)
                 begin
-                    RES <= OPA_TEMP - OPB_TEMP - CIN_TEMP;
+                    RES <= {{N{1'b0}},OPA_TEMP - OPB_TEMP - CIN_TEMP};
                     COUT <= ({1'b0,OPA_TEMP} >= ({1'b0,OPB_TEMP}+CIN_TEMP));
                     OFLOW <= !({1'b0,OPA_TEMP} >= ({1'b0,OPB_TEMP}+CIN_TEMP));
                     {ERR,G,L,E} <= 4'b0000;
@@ -211,7 +211,7 @@ begin
             begin
                 if(INP_VALID_TEMP[0])
                 begin
-                    RES <= OPA_TEMP - 1;
+                    RES <= {{N{1'b0}},OPA_TEMP - 1};
                     COUT <= 1'b0;
                     OFLOW <= (OPA_TEMP == 0);
                     {ERR,G,L,E} <= 4'b0000;
@@ -237,7 +237,7 @@ begin
             begin
                 if(INP_VALID_TEMP[1])
                 begin
-                    RES <= OPB_TEMP - 1;
+                    RES <= {{N{1'b0}},OPB_TEMP - 1};
                     COUT <= 1'b0;
                     OFLOW <= (OPB_TEMP == 0);
                     {ERR,G,L,E} <= 4'b0000;
